@@ -29,7 +29,7 @@
 3. 아래 명령어를 **그대로 복사**해서 붙여넣고 Enter를 누르세요:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/dnjs0718/vibe-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dnjs0718/vibe_kit/main/install.sh | bash
 ```
 
 > 💡 복사하려면: 위 텍스트를 드래그해서 선택 → Command+C
@@ -71,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/dnjs0718/vibe-kit/main/install.sh |
 3. 아래 명령어를 복사해서 붙여넣고 Enter를 누르세요:
 
 ```
-irm https://raw.githubusercontent.com/dnjs0718/vibe-kit/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/dnjs0718/vibe_kit/main/install.ps1 | iex
 ```
 
 4. 설치가 완료되면 PowerShell을 닫아도 됩니다

@@ -12,7 +12,7 @@
 2. 터미널에 아래 한 줄만 복사-붙여넣기하세요:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dnjs0718/vibe-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dnjs0718/vibe_kit/main/install.sh | bash
 ```
 
 3. Claude Desktop을 재시작하세요
@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/dnjs0718/vibe-kit/main/install.sh |
 터미널에 익숙한 분은 이 방법도 가능합니다.
 
 ```bash
-git clone https://github.com/dnjs0718/vibe-kit.git
+git clone https://github.com/dnjs0718/vibe_kit.git
 cd vibe-kit
 claude
 ```
