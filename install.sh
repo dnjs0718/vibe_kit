@@ -42,10 +42,8 @@ if [ -d "$VIBE_KIT_DIR" ]; then
   echo "✅ Vibe Kit 이미 존재: $VIBE_KIT_DIR"
 else
   echo "📦 Vibe Kit을 다운로드합니다..."
-  # TODO: 실제 GitHub repo URL로 교체
-  # git clone https://github.com/dnjs0718/vibe_kit.git "$VIBE_KIT_DIR"
-  echo "⚠️  GitHub 저장소 URL을 설정해주세요 (install.sh 파일의 git clone 부분)"
-  exit 1
+  git clone https://github.com/dnjs0718/vibe_kit.git "$VIBE_KIT_DIR"
+  echo "✅ Vibe Kit 다운로드 완료"
 fi
 
 # ─────────────────────────────────────
