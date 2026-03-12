@@ -36,7 +36,7 @@ fi
 # ─────────────────────────────────────
 # 2. Vibe Kit 다운로드
 # ─────────────────────────────────────
-VIBE_KIT_DIR="$HOME/vibe-kit"
+VIBE_KIT_DIR="$HOME/vibe_kit"
 
 if [ -d "$VIBE_KIT_DIR" ]; then
   echo "✅ Vibe Kit 이미 존재: $VIBE_KIT_DIR"
@@ -73,7 +73,7 @@ if [ -f "$CLAUDE_CONFIG_FILE" ]; then
   cp "$CLAUDE_CONFIG_FILE" "$CLAUDE_CONFIG_FILE.backup"
   echo "   (기존 설정 백업 완료: claude_desktop_config.json.backup)"
 
-  # 기존 설정에 vibe-kit 서버 추가
+  # 기존 설정에 vibe_kit 서버 추가
   # jq가 없으면 설치
   if ! command -v jq &> /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -83,9 +83,9 @@ if [ -f "$CLAUDE_CONFIG_FILE" ]; then
     fi
   fi
 
-  # 기존 설정에 vibe-kit MCP 서버 추가
+  # 기존 설정에 vibe_kit MCP 서버 추가
   jq --arg path "$MCP_SERVER_PATH" '
-    .mcpServers["vibe-kit"] = {
+    .mcpServers["vibe_kit"] = {
       "command": "node",
       "args": [$path]
     }
@@ -95,7 +95,7 @@ else
   cat > "$CLAUDE_CONFIG_FILE" << EOF
 {
   "mcpServers": {
-    "vibe-kit": {
+    "vibe_kit": {
       "command": "node",
       "args": ["$MCP_SERVER_PATH"]
     }
