@@ -12,25 +12,21 @@ echo ""
 # 1. Node.js 확인 및 설치
 # ─────────────────────────────────────
 if command -v node &> /dev/null; then
-  NODE_VERSION=$(node -v)
-  echo "✅ Node.js 설치됨: $NODE_VERSION"
+  echo "✅ 1/4 Node.js 확인 완료"
 else
-  echo "📦 Node.js를 설치합니다..."
+  echo "📦 1/4 Node.js를 설치합니다... (잠시만 기다려주세요)"
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
     if command -v brew &> /dev/null; then
-      brew install node
+      brew install node > /dev/null 2>&1
     else
-      echo "Homebrew를 먼저 설치합니다..."
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      brew install node
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" > /dev/null 2>&1
+      brew install node > /dev/null 2>&1
     fi
   else
-    # Linux
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_lts.x 2>/dev/null | sudo -E bash - > /dev/null 2>&1
+    sudo apt-get install -y nodejs > /dev/null 2>&1
   fi
-  echo "✅ Node.js 설치 완료"
+  echo "✅ 1/4 Node.js 설치 완료"
 fi
 
 # ─────────────────────────────────────
@@ -39,64 +35,60 @@ fi
 VIBE_KIT_DIR="$HOME/vibe_kit"
 
 if [ -d "$VIBE_KIT_DIR" ]; then
-  echo "✅ Vibe Kit 이미 존재: $VIBE_KIT_DIR"
+  echo "✅ 2/4 Vibe Kit 이미 다운로드됨"
 else
-  echo "📦 Vibe Kit을 다운로드합니다..."
-  git clone https://github.com/dnjs0718/vibe_kit.git "$VIBE_KIT_DIR"
-  echo "✅ Vibe Kit 다운로드 완료"
+  echo "📦 2/4 Vibe Kit을 다운로드합니다..."
+  git clone --quiet https://github.com/dnjs0718/vibe_kit.git "$VIBE_KIT_DIR"
+  echo "✅ 2/4 Vibe Kit 다운로드 완료"
 fi
 
 # ─────────────────────────────────────
 # 3. MCP 서버 빌드
 # ─────────────────────────────────────
-echo "🔧 MCP 서버를 빌드합니다..."
+echo "🔧 3/4 MCP 서버를 준비합니다..."
 cd "$VIBE_KIT_DIR/mcp-server"
-npm install --silent
-npm run build --silent
-echo "✅ MCP 서버 빌드 완료"
+npm install --silent 2>/dev/null
+npm run build --silent 2>/dev/null
+echo "✅ 3/4 MCP 서버 준비 완료"
 
 # ─────────────────────────────────────
 # 4. Claude Desktop 설정
 # ─────────────────────────────────────
-CLAUDE_CONFIG_DIR="$HOME/Library/Application Support/Claude"
-CLAUDE_CONFIG_FILE="$CLAUDE_CONFIG_DIR/claude_desktop_config.json"
+echo "🔧 4/4 Claude Desktop에 연결합니다..."
 
-echo ""
-echo "🔧 Claude Desktop에 Vibe Kit을 연결합니다..."
+MCP_SERVER_PATH="$VIBE_KIT_DIR/mcp-server/dist/index.js"
+NODE_PATH=$(which node)
+
+# OS별 설정 파일 경로
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  CLAUDE_CONFIG_DIR="$HOME/Library/Application Support/Claude"
+else
+  CLAUDE_CONFIG_DIR="$HOME/.config/Claude"
+fi
+CLAUDE_CONFIG_FILE="$CLAUDE_CONFIG_DIR/claude_desktop_config.json"
 
 mkdir -p "$CLAUDE_CONFIG_DIR"
 
-MCP_SERVER_PATH="$VIBE_KIT_DIR/mcp-server/dist/index.js"
-
 if [ -f "$CLAUDE_CONFIG_FILE" ]; then
-  # 기존 설정 파일이 있으면 백업
   cp "$CLAUDE_CONFIG_FILE" "$CLAUDE_CONFIG_FILE.backup"
-  echo "   (기존 설정 백업 완료: claude_desktop_config.json.backup)"
 
-  # 기존 설정에 vibe_kit 서버 추가
-  # jq가 없으면 설치
-  if ! command -v jq &> /dev/null; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-      brew install jq
-    else
-      sudo apt-get install -y jq
-    fi
-  fi
-
-  # 기존 설정에 vibe_kit MCP 서버 추가
-  jq --arg path "$MCP_SERVER_PATH" '
-    .mcpServers["vibe_kit"] = {
-      "command": "node",
-      "args": [$path]
-    }
-  ' "$CLAUDE_CONFIG_FILE" > "$CLAUDE_CONFIG_FILE.tmp" && mv "$CLAUDE_CONFIG_FILE.tmp" "$CLAUDE_CONFIG_FILE"
+  # python3으로 JSON 수정 (jq 설치 불필요)
+  python3 -c "
+import json
+with open('$CLAUDE_CONFIG_FILE') as f:
+    config = json.load(f)
+if 'mcpServers' not in config:
+    config['mcpServers'] = {}
+config['mcpServers']['vibe-kit'] = {'command': '$NODE_PATH', 'args': ['$MCP_SERVER_PATH']}
+with open('$CLAUDE_CONFIG_FILE', 'w') as f:
+    json.dump(config, f, indent=2, ensure_ascii=False)
+"
 else
-  # 새 설정 파일 생성
   cat > "$CLAUDE_CONFIG_FILE" << EOF
 {
   "mcpServers": {
-    "vibe_kit": {
-      "command": "node",
+    "vibe-kit": {
+      "command": "$NODE_PATH",
       "args": ["$MCP_SERVER_PATH"]
     }
   }
@@ -104,7 +96,7 @@ else
 EOF
 fi
 
-echo "✅ Claude Desktop 설정 완료"
+echo "✅ 4/4 Claude Desktop 설정 완료"
 
 # ─────────────────────────────────────
 # 완료!
@@ -115,7 +107,7 @@ echo "🎉 설치가 완료되었습니다!"
 echo ""
 echo "📌 사용 방법:"
 echo "   1. Claude Desktop 앱을 (재)실행하세요"
-echo "   2. 채팅창에서 '프로젝트 시작' 프롬프트를 선택하세요"
+echo "   2. 새 대화에서 '프로젝트 시작해줘!' 라고 입력하세요"
 echo "   3. 대화하면서 웹 서비스를 만드세요!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
