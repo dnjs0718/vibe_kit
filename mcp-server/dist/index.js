@@ -1,0 +1,262 @@
+#!/usr/bin/env node
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
+const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
+const zod_1 = require("zod");
+const child_process_1 = require("child_process");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+// Vibe Kit 루트 경로 (mcp-server의 상위 디렉토리)
+const VIBE_KIT_ROOT = path.resolve(__dirname, "../..");
+const server = new mcp_js_1.McpServer({
+    name: "vibe-kit",
+    version: "1.0.0",
+});
+// ─────────────────────────────────────────────
+// 📁 Tools: 파일 시스템
+// ─────────────────────────────────────────────
+server.tool("read_file", "파일 내용을 읽습니다", { file_path: zod_1.z.string().describe("읽을 파일의 절대 경로") }, async ({ file_path }) => {
+    try {
+        const content = fs.readFileSync(file_path, "utf-8");
+        return { content: [{ type: "text", text: content }] };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `오류: ${e.message}` }], isError: true };
+    }
+});
+server.tool("write_file", "파일을 생성하거나 수정합니다", {
+    file_path: zod_1.z.string().describe("파일의 절대 경로"),
+    content: zod_1.z.string().describe("파일에 쓸 내용"),
+}, async ({ file_path, content }) => {
+    try {
+        const dir = path.dirname(file_path);
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(file_path, content, "utf-8");
+        return { content: [{ type: "text", text: `✅ 파일 저장 완료: ${file_path}` }] };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `오류: ${e.message}` }], isError: true };
+    }
+});
+server.tool("list_directory", "디렉토리의 파일 목록을 봅니다", { dir_path: zod_1.z.string().describe("디렉토리의 절대 경로") }, async ({ dir_path }) => {
+    try {
+        const items = fs.readdirSync(dir_path, { withFileTypes: true });
+        const list = items
+            .map((item) => `${item.isDirectory() ? "📁" : "📄"} ${item.name}`)
+            .join("\n");
+        return { content: [{ type: "text", text: list || "(빈 디렉토리)" }] };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `오류: ${e.message}` }], isError: true };
+    }
+});
+server.tool("copy_directory", "디렉토리를 복사합니다 (템플릿 복사에 사용)", {
+    source: zod_1.z.string().describe("복사할 원본 디렉토리 절대 경로"),
+    destination: zod_1.z.string().describe("복사 대상 디렉토리 절대 경로"),
+}, async ({ source, destination }) => {
+    try {
+        (0, child_process_1.execSync)(`cp -r "${source}" "${destination}"`);
+        return { content: [{ type: "text", text: `✅ 복사 완료: ${source} → ${destination}` }] };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `오류: ${e.message}` }], isError: true };
+    }
+});
+// ─────────────────────────────────────────────
+// 🖥️ Tools: 터미널 명령어 실행
+// ─────────────────────────────────────────────
+server.tool("run_command", "터미널 명령어를 실행합니다 (npm, git, gh 등)", {
+    command: zod_1.z.string().describe("실행할 명령어"),
+    cwd: zod_1.z.string().optional().describe("작업 디렉토리 (선택)"),
+}, async ({ command, cwd }) => {
+    try {
+        const output = (0, child_process_1.execSync)(command, {
+            cwd: cwd || process.env.HOME,
+            encoding: "utf-8",
+            timeout: 120000,
+            env: { ...process.env },
+        });
+        return { content: [{ type: "text", text: output || "(명령어 실행 완료)" }] };
+    }
+    catch (e) {
+        const stderr = e.stderr || e.message;
+        const stdout = e.stdout || "";
+        return {
+            content: [{ type: "text", text: `오류:\n${stderr}\n${stdout}` }],
+            isError: true,
+        };
+    }
+});
+// ─────────────────────────────────────────────
+// 📖 Tools: 가이드 & 템플릿
+// ─────────────────────────────────────────────
+server.tool("get_guide", "비개발자를 위한 설정 가이드를 가져옵니다", {
+    guide_name: zod_1.z
+        .enum(["supabase", "github"])
+        .describe("가이드 이름: 'supabase' 또는 'github'"),
+}, async ({ guide_name }) => {
+    const guidePath = path.join(VIBE_KIT_ROOT, "guides", `${guide_name}-onboarding.md`);
+    try {
+        const content = fs.readFileSync(guidePath, "utf-8");
+        return { content: [{ type: "text", text: content }] };
+    }
+    catch (e) {
+        return { content: [{ type: "text", text: `오류: ${e.message}` }], isError: true };
+    }
+});
+server.tool("get_template_path", "프로젝트 템플릿의 경로를 반환합니다", {}, async () => {
+    const templatePath = path.join(VIBE_KIT_ROOT, "templates", "next-supabase");
+    const exists = fs.existsSync(templatePath);
+    return {
+        content: [
+            {
+                type: "text",
+                text: exists
+                    ? `템플릿 경로: ${templatePath}`
+                    : "오류: 템플릿을 찾을 수 없습니다.",
+            },
+        ],
+    };
+});
+// ─────────────────────────────────────────────
+// 📋 Prompts: 워크플로우 단계별 프롬프트
+// ─────────────────────────────────────────────
+server.prompt("프로젝트-시작", "비개발자와 함께 웹 서비스를 만드는 전체 워크플로우를 시작합니다", () => ({
+    messages: [
+        {
+            role: "user",
+            content: {
+                type: "text",
+                text: `당신은 비개발자가 웹 서비스를 만들 수 있도록 도와주는 친절한 가이드입니다.
+항상 한국어로 대화하고, 기술 용어를 최소화하세요.
+
+다음 5단계를 순서대로 진행합니다. 한 단계가 끝나면 다음 단계로 자연스럽게 넘어가세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 1단계: 기획 브레인스토밍
+
+유저에게 물어보세요:
+- "어떤 서비스를 만들고 싶으세요?"
+- "이 서비스는 누가 사용하나요?"
+- "해결하려는 문제가 뭔가요?"
+
+아이디어가 없다면 "평소 불편했던 것"부터 물어보세요.
+
+파악이 되면 정리하세요:
+- 서비스 이름(가제), 한 줄 설명
+- 핵심 기능 3~5개
+- 사용자 유형
+- 주요 화면
+
+정리 내용을 유저에게 확인받고, write_file 도구로 작업 디렉토리에 project-brief.md를 저장하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎨 2단계: 디자인
+
+유저에게 물어보세요: "혹시 미리 준비한 디자인이 있으신가요?"
+
+- 있으면: 디자인 정보를 project-brief.md에 추가
+- 없으면 두 가지 옵션 제시:
+  A) Google Stitch(https://stitch.withgoogle.com/)로 AI 디자인 생성
+  B) "제가 깔끔하게 만들어드릴게요" → 선호 스타일(밝은/어두운, 미니멀/화려 등) 물어보기
+
+디자인 정보를 project-brief.md에 추가하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗄️ 3단계: Supabase 설정
+
+"Supabase는 데이터를 저장하고 로그인 기능을 제공하는 서비스입니다. 무료예요!"
+
+get_guide 도구로 'supabase' 가이드를 가져와서 안내하세요.
+
+유저에게 받아야 할 정보:
+1. Project URL (예: https://xxxx.supabase.co)
+2. anon key
+
+받은 정보를 project-brief.md에 추가하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🐙 4단계: GitHub 설정
+
+"GitHub는 코드를 안전하게 보관하는 서비스입니다. Google Drive의 코드 버전이에요!"
+
+get_guide 도구로 'github' 가이드를 가져와서 안내하세요.
+
+run_command로 확인:
+- git config user.name / user.email
+- gh auth status
+
+설정이 안 되어있다면 가이드를 따라 안내하세요.
+설정이 완료되면 run_command로 저장소를 생성하세요:
+gh repo create [서비스-이름] --public --description "[설명]"
+
+GitHub URL을 project-brief.md에 추가하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 5단계: 프로젝트 코드 생성
+
+1. project-brief.md를 읽고 유저에게 최종 확인
+2. get_template_path로 템플릿 경로 확인
+3. copy_directory로 템플릿을 새 프로젝트 디렉토리에 복사
+4. write_file로 .env.local에 Supabase 정보 저장
+5. 기획에 맞게 페이지, 컴포넌트, 스타일 코드를 생성
+6. run_command로 npm install && npm run build
+7. run_command로 git init, add, commit, push
+8. 유저에게 축하 메시지와 다음 단계(Vercel 배포) 안내
+
+기술 스택: Next.js (App Router), Supabase, Tailwind CSS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+지금 유저에게 인사하고 1단계부터 시작하세요!`,
+            },
+        },
+    ],
+}));
+// ─────────────────────────────────────────────
+// 🚀 서버 시작
+// ─────────────────────────────────────────────
+async function main() {
+    const transport = new stdio_js_1.StdioServerTransport();
+    await server.connect(transport);
+}
+main().catch(console.error);
